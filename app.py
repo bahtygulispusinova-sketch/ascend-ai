@@ -1,205 +1,209 @@
 ﻿import streamlit as st
 from huggingface_hub import InferenceClient
-import pandas as pd
-import plotly.express as px
-import re
 
 # --- КОНФИГУРАЦИЯ ---
-# Рекомендуется прятать токен в st.secrets, но для прототипа оставляем так
-HF_TOKEN = "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" 
+HF_TOKEN = "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" 
 client = InferenceClient("meta-llama/Meta-Llama-3-8B-Instruct", token=HF_TOKEN)
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "analysis_done" not in st.session_state:
-    st.session_state.analysis_done = False
-
-# --- УЛЬТРА-ДИЗАЙН ---
-st.set_page_config(page_title="ASCEND AI PRO", layout="wide")
-
-st.markdown("""
-    <style>
-    .stApp {
-        background: radial-gradient(circle at center, #111 0%, #000 100%);
-        background-image: 
-            linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
-        background-size: 50px 50px;
-        color: white;
-    }
-
-    @keyframes floatAll { 
-        0% { transform: translateY(0px); } 
-        50% { transform: translateY(-5px); } 
-        100% { transform: translateY(0px); } 
-    }
-    
-    @keyframes buttonPulse {
-        0% { box-shadow: 0 0 0px rgba(255,255,255,0); transform: scale(1); }
-        50% { box-shadow: 0 0 15px rgba(0, 210, 255, 0.4); transform: scale(1.02); }
-        100% { box-shadow: 0 0 0px rgba(255,255,255,0); transform: scale(1); }
-    }
-
-    @keyframes glowText { from { text-shadow: 0 0 10px #fff; } to { text-shadow: 0 0 20px #fff, 0 0 30px #00d2ff; } }
-
-    h1 { font-family: 'Inter', sans-serif; font-weight: 900; letter-spacing: -2px; animation: glowText 2s ease-in-out infinite alternate; }
-
-    /* Ограничиваем анимацию, чтобы не мешала вводу текста в чат */
-    [data-testid="stVerticalBlock"] > div:not(.stChatInput) {
-        animation: floatAll 6s ease-in-out infinite;
-    }
-
-    .stTextInput input, .stTextArea textarea, .stChatInput input {
-        background: rgba(255, 255, 255, 0.03) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 4px !important;
-        color: white !important;
-    }
-
-    div.stButton > button {
-        background: white !important; color: black !important;
-        border-radius: 2px !important; font-weight: 900 !important;
-        text-transform: uppercase; border: none !important;
-        animation: buttonPulse 3s ease-in-out infinite !important;
-        transition: 0.3s;
-        width: 100%;
-    }
-    div.stButton > button:hover { transform: scale(1.05) !important; background: #00d2ff !important; }
-
-    .ai-output {
-        background: rgba(0, 210, 255, 0.05);
-        border: 1px solid rgba(0, 210, 255, 0.2);
-        padding: 20px; border-radius: 10px; backdrop-filter: blur(10px);
-        margin-bottom: 10px;
-    }
-    .user-msg {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 15px; border-radius: 10px; margin-bottom: 10px; text-align: right;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- ЛОГИКА ГРАФИКА (УЛУЧШЕННАЯ КРЕАТИВНОСТЬ) ---
-def build_radar(grades, interests, labels):
-    # Базовые значения
-    values = [3, 3, 3, 3, 3] # Логика, Креатив, Наука, Гум, Социум
-    
-    combined_text = (str(grades) + " " + str(interests)).lower()
-    
-    # Динамический анализ на основе ключевых слов
-    if re.search(r'(мат|math|информ|прог|код|logi|алгебр)', combined_text): values[0] += 4
-    if re.search(r'(арт|art|рису|дизайн|музык|творч|crea)', combined_text): values[1] += 4
-    if re.search(r'(физ|phys|хим|био|наук|scien)', combined_text): values[2] += 4
-    if re.search(r'(истор|лит|язык|lang|humani|философ)', combined_text): values[3] += 4
-    if re.search(r'(общ|люд|соц|спорт|коммуник|soci|lead)', combined_text): values[4] += 4
-    
-    # Нормализация до максимума в 10 баллов
-    values = [min(v, 10) for v in values]
-    
-    df = pd.DataFrame(dict(r=values, theta=labels))
-    fig = px.line_polar(df, r='r', theta='theta', line_close=True)
-    fig.update_traces(fill='toself', line_color='#00d2ff', fillcolor='rgba(0, 210, 255, 0.2)')
-    fig.update_layout(
-        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='white',
-        polar=dict(bgcolor='rgba(0,0,0,0)', radialaxis=dict(visible=False, range=[0, 10]), 
-                   angularaxis=dict(gridcolor='rgba(255,255,255,0.1)'))
-    )
-    return fig
+# Состояние приложения
+if 'step' not in st.session_state: st.session_state.step = 0
+if 'user_data' not in st.session_state:
+    st.session_state.user_data = {"name": "", "age": "", "grades": "", "skills": ""}
+if "messages" not in st.session_state: st.session_state.messages = []
+if "analysis_done" not in st.session_state: st.session_state.analysis_done = False
+if "current_lang" not in st.session_state: st.session_state.current_lang = "РУС"
 
 # --- СЛОВАРЬ ---
-languages = {
-    "RUS": {
-        "title": "ASCEND PRO", "name": "ИМЯ", "age": "ВОЗРАСТ", "school": "ШКОЛА", "grd": "ЛЮБИМЫЕ ПРЕДМЕТЫ И ОЦЕНКИ", 
-        "int": "ХОББИ И ИНТЕРЕСЫ", "btn": "СГЕНЕРИРОВАТЬ КАРЬЕРНЫЙ ПУТЬ", "chat": "Задайте ИИ уточняющий вопрос...",
-        "ready": "ГОТОВ К ВОСХОЖДЕНИЮ", "radar": ["Логика/IT", "Креативность", "Точные науки", "Гуманитарные", "Социальные"]
+L = {
+    "РУС": {
+        "lang_tag": "Russian",
+        "title": "ASCEND PRO", "start_btn": "НАЧАТЬ ВОСХОЖДЕНИЕ",
+        "next": "ДАЛЕЕ", "back": "НАЗАД", "gen": "АНАЛИЗИРОВАТЬ",
+        "step1": "ИДЕНТИФИКАЦИЯ", "step2": "ПОКАЗАТЕЛИ ЗНАНИЙ", "step3": "ВЕКТОР ИНТЕРЕСОВ",
+        "name_lbl": "ИМЯ", "age_lbl": "ВОЗРАСТ", "grd_lbl": "СПИСОК ПРЕДМЕТОВ И ОЦЕНОК",
+        "skl_lbl": "НАВЫКИ И УВЛЕЧЕНИЯ", "matrix": "ИТОГОВЫЙ ОТЧЕТ",
+        "chat_lbl": "СВЯЗЬ С УЗЛОМ...", "reset": "ПЕРЕЗАГРУЗКА",
+        "footer": "ASCENDING SITE // GLOBAL PROTOCOL"
     },
-    "KAZ": {
-        "title": "ASCEND PRO", "name": "ЕСІМ", "age": "ЖАСЫ", "school": "МЕКТЕП", "grd": "СҮЙІКТІ ПӘНДЕР МЕН БАҒАЛАР", 
-        "int": "ХОББИ ЖӘНЕ ҚЫЗЫҒУШЫЛЫҚТАР", "btn": "МАНСАП ЖОЛЫН ҚҰРУ", "chat": "ЖИ-ға нақтылау сұрағын қойыңыз...",
-        "ready": "ӨРЛЕУГЕ ДАЙЫНБЫЗ", "radar": ["Логика/IT", "Креатив", "Нақты ғылымдар", "Гуманитарлық", "Әлеуметтік"]
+    "ҚАЗ": {
+        "lang_tag": "Kazakh",
+        "title": "ASCEND PRO", "start_btn": "ӨРЛЕУДІ БАСТАУ",
+        "next": "АЛҒА", "back": "АРТҚА", "gen": "ТАЛДАУ",
+        "step1": "ИДЕНТИФИКАЦИЯ", "step2": "БІЛІМ КӨРСЕТКІШТЕРІ", "step3": "ҚЫЗЫҒУШЫЛЫҚ ВЕКТОРЫ",
+        "name_lbl": "ЕСІМ", "age_lbl": "ЖАС", "grd_lbl": "ПӘНДЕР МЕН БАҒАЛАР ТІЗІМІ",
+        "skl_lbl": "ДАҒДЫЛАР МЕН ҚЫЗЫҒУШЫЛЫҚТАР", "matrix": "ҚОРЫТЫНДЫ ЕСЕП",
+        "chat_lbl": "БАЙЛАНЫС ОРНАТУ...", "reset": "ҚАЙТА ЖҮКТЕУ",
+        "footer": "ASCENDING SITE // GLOBAL PROTOCOL"
     },
     "ENG": {
-        "title": "ASCEND PRO", "name": "NAME", "age": "AGE", "school": "SCHOOL", "grd": "FAVORITE SUBJECTS & GRADES", 
-        "int": "HOBBIES & INTERESTS", "btn": "GENERATE CAREER PATH", "chat": "Ask the AI a follow-up question...",
-        "ready": "READY FOR ASCEND", "radar": ["Logic/IT", "Creative", "Science", "Humanities", "Social"]
+        "lang_tag": "English",
+        "title": "ASCEND PRO", "start_btn": "START ASCEND",
+        "next": "NEXT", "back": "BACK", "gen": "ANALYZE",
+        "step1": "IDENTIFICATION", "step2": "KNOWLEDGE METRICS", "step3": "INTEREST VECTOR",
+        "name_lbl": "NAME", "age_lbl": "AGE", "grd_lbl": "SUBJECTS AND GRADES",
+        "skl_lbl": "SKILLS AND HOBBIES", "matrix": "FINAL REPORT",
+        "chat_lbl": "NODE COMMUNICATION...", "reset": "REBOOT",
+        "footer": "ASCENDING SITE // GLOBAL PROTOCOL"
     }
 }
 
-l_col, r_col = st.columns([3, 1])
-with r_col:
-    lang = st.radio("", ["RUS", "KAZ", "ENG"], horizontal=True, label_visibility="collapsed")
-c = languages[lang]
+# --- CSS ---
+st.set_page_config(page_title="ASCEND PRO", layout="wide")
 
-st.markdown(f"<h1>{c['title']} 🪜</h1>", unsafe_allow_html=True)
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;700&family=Syncopate:wght@700&display=swap');
 
-col1, col2 = st.columns([1, 1.2], gap="large")
+    .stApp {
+        background: #000;
+        background-image: 
+            radial-gradient(circle at 20% 30%, rgba(176, 38, 255, 0.1) 0%, transparent 40%),
+            radial-gradient(circle at 80% 70%, rgba(0, 210, 255, 0.1) 0%, transparent 40%),
+            linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+        background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+        color: #fff;
+        font-family: 'Space Grotesk', sans-serif;
+    }
 
-with col1:
-    u_name = st.text_input(c["name"])
-    row = st.columns(2)
-    u_age = row[0].text_input(c["age"])
-    u_school = row[1].text_input(c["school"])
-    u_grades = st.text_area(c["grd"], height=80)
-    u_int = st.text_area(c["int"], height=80)
+    .main-title {
+        font-family: 'Syncopate', sans-serif;
+        font-size: clamp(3rem, 10vw, 7rem) !important;
+        text-align: center;
+        background: linear-gradient(180deg, #fff 40%, #444 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -6px;
+        margin: 40px 0;
+    }
+
+    .progress-wrapper { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; }
+    .progress-block { height: 5px; width: 50px; background: #1a1a1a; transition: 0.5s; }
+    .progress-block.active { background: #b026ff; box-shadow: 0 0 15px #b026ff; }
+
+    .interface-box {
+        background: rgba(8, 8, 8, 0.9);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255,255,255,0.1);
+        padding: 50px;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .stTextInput input, .stTextArea textarea {
+        background: #000 !important;
+        border: 1px solid #222 !important;
+        color: #fff !important;
+        border-radius: 0px !important;
+    }
+
+    /* ФИКС КНОПКИ ДАЛЕЕ В ПРАВЫЙ УГОЛ */
+    div[data-testid="column"]:nth-child(2) div.stButton {
+        text-align: right !important;
+    }
+    div[data-testid="column"]:nth-child(2) div.stButton button {
+        display: inline-block !important;
+    }
+
+    div.stButton > button {
+        background: #fff !important;
+        color: #000 !important;
+        border-radius: 0px !important;
+        font-weight: 700 !important;
+        letter-spacing: 2px !important;
+        padding: 12px 30px !important;
+        border: none !important;
+    }
+    div.stButton > button:hover { background: #b026ff !important; color: #fff !important; box-shadow: 0 0 25px #b026ff; }
     
-    if st.button(c["btn"]):
-        # Улучшенный системный промпт для персонализации
-        sys_prompt = f"""You are an elite career counselor. Analyze the user based on these inputs:
-        Name: {u_name}, Age: {u_age}, School: {u_school}.
-        Subjects/Grades: {u_grades}.
-        Interests/Hobbies: {u_int}.
-        
-        Provide:
-        1. A brief personality & skill summary.
-        2. Top 3 recommended professions (explain WHY based on their specific grades and interests).
-        3. Next steps (what skills to learn now).
-        Format beautifully with emojis. Reply strictly in {lang} language."""
-        
-        st.session_state.messages = [
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": "Please generate my personalized career analysis."}
-        ]
-        
-        with st.spinner("QUANTUM COMPUTING..."):
-            res = client.chat_completion(messages=st.session_state.messages, max_tokens=1500)
-            st.session_state.messages.append({"role": "assistant", "content": res.choices[0].message.content})
-            st.session_state.analysis_done = True
+    header, footer { visibility: hidden; }
+    </style>
+    """, unsafe_allow_html=True)
 
-    # Отрисовка радара с учетом и оценок, и интересов
-    st.plotly_chart(build_radar(u_grades, u_int, c["radar"]), use_container_width=True, config={'displayModeBar': False})
+st.markdown('<h1 class="main-title">ASCEND PRO</h1>', unsafe_allow_html=True)
 
-with col2:
-    chat_container = st.container(height=600, border=False)
+# Переключатель языков
+l_col = st.columns([1,1,1,1,1])[2]
+with l_col:
+    new_lang = st.radio("", ["РУС", "ҚАЗ", "ENG"], horizontal=True, label_visibility="collapsed")
+    if new_lang != st.session_state.current_lang:
+        st.session_state.current_lang = new_lang
+        st.session_state.analysis_done = False 
+        st.session_state.messages = [] # Очистка памяти для корректного перевода
+        st.rerun()
+
+t = L[st.session_state.current_lang]
+
+st.markdown('<div class="interface-box">', unsafe_allow_html=True)
+
+if st.session_state.step > 0:
+    blocks = "".join([f'<div class="progress-block {"active" if i <= st.session_state.step else ""}"></div>' for i in range(1, 5)])
+    st.markdown(f'<div class="progress-wrapper">{blocks}</div>', unsafe_allow_html=True)
+
+if st.session_state.step == 0:
+    st.markdown(f"<h2 style='text-align:center; letter-spacing:8px;'>SYSTEM STANDBY</h2>", unsafe_allow_html=True)
+    if st.button(t["start_btn"]):
+        st.session_state.step = 1
+        st.rerun()
+
+elif st.session_state.step == 1:
+    st.markdown(f"<h3>{t['step1']}</h3>", unsafe_allow_html=True)
+    st.session_state.user_data["name"] = st.text_input(t["name_lbl"], st.session_state.user_data["name"])
+    st.session_state.user_data["age"] = st.text_input(t["age_lbl"], st.session_state.user_data["age"])
     
-    with chat_container:
-        if st.session_state.analysis_done:
-            # Отображаем историю сообщений (игнорируем системный промпт и первый технический запрос)
-            for msg in st.session_state.messages[2:]:
-                if msg["role"] == "assistant":
-                    st.markdown(f'<div class="ai-output">🤖 <b>ASCEND AI:</b><br><br>{msg["content"]}</div>', unsafe_allow_html=True)
-                elif msg["role"] == "user":
-                    st.markdown(f'<div class="user-msg">🧑‍🎓 <b>{u_name if u_name else "User"}:</b><br>{msg["content"]}</div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-                <div style="height: 500px; display: flex; align-items: center; justify-content: center; opacity: 0.1; font-size: 4rem; font-weight: 900; text-align: center; line-height: 1;">
-                    {c['ready']}
-                </div>
-            """, unsafe_allow_html=True)
-            
-    # Интерактивность: Поле для дополнительных вопросов к ИИ
-    if st.session_state.analysis_done:
-        if user_question := st.chat_input(c["chat"]):
-            # Добавляем вопрос пользователя в историю
-            st.session_state.messages.append({"role": "user", "content": user_question})
-            
-            # Показываем вопрос сразу
-            with chat_container:
-                st.markdown(f'<div class="user-msg">🧑‍🎓 <b>{u_name}:</b><br>{user_question}</div>', unsafe_allow_html=True)
-            
-            # Получаем ответ от ИИ с учетом контекста предыдущего разговора
-            with st.spinner("..."):
-                res = client.chat_completion(messages=st.session_state.messages, max_tokens=800)
-                ai_response = res.choices[0].message.content
-                st.session_state.messages.append({"role": "assistant", "content": ai_response})
-                st.rerun() # Перезагружаем интерфейс для обновления чата
+    c_left, c_right = st.columns([1, 1])
+    with c_left:
+        if st.button(t["back"]): st.session_state.step = 0; st.rerun()
+    with c_right:
+        if st.button(t["next"]): st.session_state.step = 2; st.rerun()
+
+elif st.session_state.step == 2:
+    st.markdown(f"<h3>{t['step2']}</h3>", unsafe_allow_html=True)
+    st.session_state.user_data["grades"] = st.text_area(t["grd_lbl"], st.session_state.user_data["grades"], height=100)
+    
+    c_left, c_right = st.columns([1, 1])
+    with c_left:
+        if st.button(t["back"]): st.session_state.step = 1; st.rerun()
+    with c_right:
+        if st.button(t["next"]): st.session_state.step = 3; st.rerun()
+
+elif st.session_state.step == 3:
+    st.markdown(f"<h3>{t['step3']}</h3>", unsafe_allow_html=True)
+    st.session_state.user_data["skills"] = st.text_area(t["skl_lbl"], st.session_state.user_data["skills"], height=100)
+    
+    c_left, c_right = st.columns([1, 1])
+    with c_left:
+        if st.button(t["back"]): st.session_state.step = 2; st.rerun()
+    with c_right:
+        if st.button(t["gen"]): st.session_state.step = 4; st.rerun()
+
+elif st.session_state.step == 4:
+    if not st.session_state.analysis_done:
+        with st.spinner("QUANTUM CORE PROCESSING..."):
+            try:
+                d = st.session_state.user_data
+                target_lang = t["lang_tag"]
+                sys_instruct = f"""Career AI Expert. 
+                STRICT RULE: Respond ONLY in {target_lang} language. 
+                STRICT RULE: Do NOT use any emojis. 
+                Analyze this profile: Name {d['name']}, Grades {d['grades']}, Interests {d['skills']}.
+                Structure: 1. Professions, 2. Reason, 3. Skills to learn, 4. Grade gap analysis."""
+                
+                messages = [{"role": "system", "content": sys_instruct}, {"role": "user", "content": "Analyze"}]
+                res = client.chat_completion(messages=messages, max_tokens=1500)
+                
+                st.session_state.messages = [res.choices[0].message.content]
+                st.session_state.analysis_done = True
+                st.rerun()
+            except Exception as e:
+                st.error(f"CONNECTION ERROR. Check HF Token.")
+
+    st.markdown(f"<h3>{t['matrix']}</h3>", unsafe_allow_html=True)
+    st.code(st.session_state.messages[0], language="text")
+    if st.button(t["reset"]):
+        st.session_state.step = 0
+        st.session_state.analysis_done = False
+        st.session_state.messages = []
+        st.rerun()
+
+st.markdown('</div>', unsafe_allow_html=True)
