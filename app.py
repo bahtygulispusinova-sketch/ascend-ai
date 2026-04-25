@@ -2,7 +2,7 @@
 from huggingface_hub import InferenceClient
 
 # --- КОНФИГУРАЦИЯ ---
-HF_TOKEN = "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" 
+HF_TOKEN = st.secrets["HF_TOKEN"]
 client = InferenceClient("meta-llama/Meta-Llama-3-8B-Instruct", token=HF_TOKEN)
 
 # Состояние приложения
